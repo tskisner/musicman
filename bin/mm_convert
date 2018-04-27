@@ -1,0 +1,81 @@
+
+from __future__ import (absolute_import, division, print_function,
+    unicode_literals)
+
+import os
+import sys
+import shutil
+import re
+import argparse
+
+import musicman as mm
+
+
+def main():
+    parser = argparse.ArgumentParser( description='Convert music library while preserving metadata.' )
+    parser.add_argument( '--indir', required=True, default=None,
+        help='input directory' )
+    parser.add_argument( '--outdir', required=False, default=None,
+        help='output directory' )
+    parser.add_argument( '--outformat', required=False, default='flac',
+        help='output music format.' )
+    args = parser.parse_args()
+
+    indir = os.path.abspath(args.indir)
+    outdir = None
+    if args.outdir is not None:
+        outdir = os.path.abspath(args.outdir)
+        if not os.path.isdir(outdir):
+            os.mkdir(outdir)
+
+    # Walk through input directory.  Verify inputs and optionally convert and
+    # write to output directory.
+
+    # Full list of artists
+    allartist = list()
+    for root, dirs, files in os.walk(indir):
+        for d in dirs:
+            allartist.append(d)
+        break
+
+    # For each artist...
+    for art in allartist:
+        artistdir = os.path.join(indir, art)
+        for root, dirs, files in os.walk(artistdir):
+            # For each album...
+            for d in dirs:
+                albumdir = os.path.join(artistdir, d)
+                album, artist, songs = mm.album_props(albumdir)
+                print("Input path {}:".format(albumdir))
+                print("  album = {}".format(album))
+                print("  albumartist = {}".format(artist))
+                print("  songs:")
+                outartistdir = None
+                outalbumdir = None
+                if outdir is not None:
+                    outartistdir = os.path.join(outdir, artist)
+                    if not os.path.isdir(outartistdir):
+                        os.mkdir(outartistdir)
+                    outalbumdir = os.path.join(outartistdir, album)
+                    if not os.path.isdir(outalbumdir):
+                        os.mkdir(outalbumdir)
+                for sngpath, sngformat, sngprops in songs:
+                    print("    {} ({})".format(sngpath, sngformat))
+                    for t in mm.taglist:
+                        print("    {} = {}".format(t, sngprops[t]))
+                    if outdir is not None:
+                        outsong = os.path.join(outalbumdir,
+                            "{:02d} {}.{}".format(sngprops["track"],
+                            sngprops["song"], mm.format_suffix[args.outformat]))
+                        print("   Output: '{}'".format(outsong))
+                        mm.convert_file(sngpath, sngformat, outsong,
+                            args.outformat)
+                        mm.song_set_props(outsong, args.outformat, sngprops)
+            break
+
+    return
+
+
+
+if __name__ == "__main__":
+    main()
