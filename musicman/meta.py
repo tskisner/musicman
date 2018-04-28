@@ -2,6 +2,9 @@
 # file.  All rights reserved.  Use of this source code is governed
 # by a BSD-style license that can be found in the LICENSE file.
 
+from __future__ import (absolute_import, division, print_function,
+    unicode_literals)
+
 import sys
 import os
 import re
@@ -86,10 +89,11 @@ def song_get_props(path, format):
     props = dict()
     for t in taglist:
         props[t] = None
+
     if format == "flac":
         com = list()
         com.extend(["metaflac", "--export-tags-to=-"])
-        com.extend([path])
+        com.append(path)
         out, err = sprun(com)
         for line in out:
             f = line.split('=')
@@ -121,7 +125,28 @@ def song_get_props(path, format):
                     props["year"] = f[1]
 
     elif format == "alac":
-        pass
+        repat = {
+            "song" : re.compile(r'.*Name:\s+"(.*)"$'),
+            "artist" : re.compile(r'.*Artist:\s+"(.*)"$'),
+            "album" : re.compile(r'.*Album:\s+"(.*)"$'),
+            "albumartist" : re.compile(r'.*Album Artist:\s+"(.*)"$'),
+            "tracks" : re.compile(r'.*Track:\s+(\d+) of (\d+)$')
+        }
+        com = list()
+        com.extend(["mp4info"])
+        com.append(path)
+        out, err = sprun(com)
+        for line in out:
+            for k, v in repat.items():
+                m = v.match(line)
+                if m is not None:
+                    if k == "tracks":
+                        props["track"] = int(m.group(1))
+                        props["tracks"] = int(m.group(2))
+                    else:
+                        props[k] = m.group(1)
+                    break
+
     elif format == "ogg":
         pass
     elif format == "mp3":
@@ -148,11 +173,7 @@ def song_set_props(path, format, props):
         incom = ""
         for t in taglist:
             if props[t] is not None:
-                if (t == "track") or (t == "tracks"):
-                    ncom = '{}{}={}\n'.format(incom, metakeys[t], props[t])
-                else:
-                    incom = '{}{}="{}"\n'.format(incom, metakeys[t],
-                        quote_safe(props[t]))
+                incom = '{}{}={}\n'.format(incom, metakeys[t], props[t])
         out, err = sprun(com, input=incom)
         if len(err) > 0:
             print("\n".join(err), flush=True)
@@ -174,8 +195,7 @@ def song_set_props(path, format, props):
                 if (t == "track") or (t == "tracks"):
                     com.append('{} {}'.format(metakeys[t], props[t]))
                 else:
-                    com.append('{} "{}"'.format(metakeys[t],
-                        quote_safe(props[t])))
+                    com.append('{} "{}"'.format(metakeys[t], props[t]))
         com.append(path)
         out, err = sprun(com)
         if len(err) > 0:

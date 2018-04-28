@@ -2,9 +2,13 @@
 # file.  All rights reserved.  Use of this source code is governed
 # by a BSD-style license that can be found in the LICENSE file.
 
+from __future__ import (absolute_import, division, print_function,
+    unicode_literals)
+
 import sys
 import os
 import re
+import shutil
 
 import subprocess as sp
 
@@ -37,6 +41,10 @@ def alac_to_flac(input, output):
 
 
 def convert_file(input, informat, output, outformat):
+    if informat == outformat:
+        shutil.copy2(input, output)
+        return
+
     if informat == "flac":
         if outformat == "alac":
             flac_to_alac(input, output)

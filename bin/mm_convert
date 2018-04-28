@@ -11,6 +11,14 @@ import argparse
 import musicman as mm
 
 
+def sanitize(input):
+    """Remove characters that cause filesystem problems.
+    """
+    out = input.replace("/", "-")
+    out = re.sub(r'^\.', '_', out)
+    return out
+
+
 def main():
     parser = argparse.ArgumentParser( description='Convert music library while preserving metadata.' )
     parser.add_argument( '--indir', required=True, default=None,
@@ -53,9 +61,11 @@ def main():
                 outartistdir = None
                 outalbumdir = None
                 if outdir is not None:
+                    artist = sanitize(artist)
                     outartistdir = os.path.join(outdir, artist)
                     if not os.path.isdir(outartistdir):
                         os.mkdir(outartistdir)
+                    album = sanitize(album)
                     outalbumdir = os.path.join(outartistdir, album)
                     if not os.path.isdir(outalbumdir):
                         os.mkdir(outalbumdir)
@@ -64,9 +74,10 @@ def main():
                     for t in mm.taglist:
                         print("    {} = {}".format(t, sngprops[t]))
                     if outdir is not None:
+                        safesong = sanitize(sngprops["song"])
                         outsong = os.path.join(outalbumdir,
                             "{:02d} {}.{}".format(sngprops["track"],
-                            sngprops["song"], mm.format_suffix[args.outformat]))
+                            safesong, mm.format_suffix[args.outformat]))
                         print("   Output: '{}'".format(outsong))
                         mm.convert_file(sngpath, sngformat, outsong,
                             args.outformat)
