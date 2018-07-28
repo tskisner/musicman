@@ -67,6 +67,7 @@ def live_report(com, label):
 
 def file_split(path):
     pat = re.compile(r"([0-9]+)\s+(.*)\.(\w+)?$")
+    sufpat = re.compile(r".*\.(\w+)?$")
     mat = pat.match(path)
     track = None
     name = None
@@ -76,13 +77,19 @@ def file_split(path):
         name = mat.group(2)
         suffix = mat.group(3)
     else:
-        print("file_split fail:  {}".format(path))
+        # Our file name is different- see if we can at least get the suffix.
+        mat = sufpat.match(path)
+        if mat is not None:
+            suffix = mat.group(1)
     return track, name, suffix
 
 
 def find_format(path):
     track, name, suffix = file_split(path)
-    return suffix_format[suffix.lower()]
+    if suffix.lower() in suffix_format:
+        return suffix_format[suffix.lower()]
+    else:
+        return None
 
 
 def song_get_props(path, format):
@@ -210,6 +217,8 @@ def song_set_props(path, format, props):
 
 
 def check_replace(props, key, val):
+    if val is None:
+        return
     if props[key] is None:
         props[key] = val
     else:
@@ -227,12 +236,15 @@ def album_props(albumdir):
     for root, dirs, files in os.walk(albumdir):
         for f in files:
             track, name, suffix = file_split(f)
-            format = suffix_format[suffix.lower()]
-            if track is not None:
-                # this is a song file...
+            if suffix.lower() in suffix_format:
+                # this is a song file
+                format = suffix_format[suffix.lower()]
                 songs.append( (track, name, format, os.path.join(root, f)) )
-                if track > maxtrack:
-                    maxtrack = track
+                if track is None:
+                    maxtrack += 1
+                else:
+                    if track > maxtrack:
+                        maxtrack = track
         break
 
     asongs = list()
