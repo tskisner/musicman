@@ -155,7 +155,7 @@ def song_get_props(path, format):
                     break
 
     elif format == "ogg":
-        pass
+
     elif format == "mp3":
         pass
 

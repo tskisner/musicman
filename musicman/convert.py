@@ -27,6 +27,20 @@ def flac_to_alac(input, output):
     return
 
 
+def flac_to_ogg(input, output):
+    deccom = ["flac", "-s", "-d", "-f", "-c", input]
+    enccom = ["ffmpeg", "-i", "-", "-loglevel", "error", "-acodec", "libvorbis",
+              output]
+    dec = sp.Popen(deccom, stdin=None, stdout=sp.PIPE, stderr=None,
+                   universal_newlines=True)
+    enc = sp.Popen(enccom, stdin=dec.stdout, stdout=sp.PIPE, stderr=None,
+                   universal_newlines=True)
+    dec.stdout.close()
+    out, err = enc.communicate()
+    print(out)
+    return
+
+
 def alac_to_flac(input, output):
     deccom = ["alac-decoder", input]
     enccom = ["flac", "-s", "-o", output, "-"]
@@ -48,6 +62,8 @@ def convert_file(input, informat, output, outformat):
     if informat == "flac":
         if outformat == "alac":
             flac_to_alac(input, output)
+        elif outformat == "ogg""
+            flac_to_ogg(input, output)
         else:
             raise NotImplementedError("{} --> {} unsupported".format(informat,
                 outformat))
