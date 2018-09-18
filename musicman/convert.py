@@ -41,6 +41,15 @@ def flac_to_ogg(input, output):
     return
 
 
+def flac_to_wav(input, output):
+    com = ["flac", "-s", "-d", "-f", "-o", output, input]
+    dec = sp.Popen(com, stdin=None, stdout=sp.PIPE, stderr=None,
+                   universal_newlines=True)
+    out, err = dec.communicate()
+    print(out)
+    return
+
+
 def alac_to_flac(input, output):
     deccom = ["alac-decoder", input]
     enccom = ["flac", "-s", "-o", output, "-"]
@@ -62,8 +71,10 @@ def convert_file(input, informat, output, outformat):
     if informat == "flac":
         if outformat == "alac":
             flac_to_alac(input, output)
-        elif outformat == "ogg""
+        elif outformat == "ogg":
             flac_to_ogg(input, output)
+        elif outformat == "wav":
+            flac_to_wav(input, output)
         else:
             raise NotImplementedError("{} --> {} unsupported".format(informat,
                 outformat))

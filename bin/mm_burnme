@@ -1,0 +1,94 @@
+
+from __future__ import (absolute_import, division, print_function,
+    unicode_literals)
+
+import os
+import sys
+import shutil
+import re
+import argparse
+import subprocess as sp
+
+import tempfile
+
+import musicman as mm
+
+
+def sanitize(input):
+    """Remove characters that cause filesystem problems.
+    """
+    out = input.replace("/", "-")
+    out = re.sub(r"^\.", "_", out)
+    return out
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Burn an album to a CD.")
+    parser.add_argument("--album", required=True, default=None,
+        help="Input album directory")
+    parser.add_argument("--device", required=False, default="/dev/sr0",
+        help="Output device")
+    parser.add_argument("--toc", required=False, default=None,
+        help="Write the TOC file here.  If not specified, write a temp file.")
+    args = parser.parse_args()
+
+    albumdir = os.path.abspath(args.album)
+
+    # Load the album metadata
+    album, artist, songs = mm.album_props(albumdir)
+
+    # Temporary directory for wav files
+    wavdir = os.path.join(tempfile.gettempdir(), "musicman")
+    if not os.path.isdir(wavdir):
+        os.makedirs(wavdir)
+
+    # Where we are writing the TOC
+    tocpath = args.toc
+    if tocpath is None:
+        tocpath = os.path.join(wavdir, "burnme.txt")
+
+    # Go through all songs, converting to wav and writing the TOC
+
+    with open(tocpath, "w") as tc:
+        tc.write("CD_DA\n\n")
+        tc.write("CD_TEXT {\n")
+        tc.write("  LANGUAGE_MAP {\n")
+        tc.write("    0 : EN\n")
+        tc.write("  }\n\n")
+        tc.write("  LANGUAGE 0 {\n")
+        tc.write("    TITLE \"{}\"\n".format(album))
+        tc.write("    PERFORMER \"{}\"\n".format(artist))
+        tc.write("  }\n")
+        tc.write("}\n\n")
+
+        for sngpath, sngformat, sngprops in songs:
+            print("Converting to wav:  {}".format(sngprops["song"]), flush=True)
+            safesong = sanitize(sngprops["song"])
+            outsong = os.path.join(wavdir,
+                "{:02d} {}.wav".format(sngprops["track"],safesong))
+            mm.convert_file(sngpath, sngformat, outsong, "wav")
+            tc.write("TRACK AUDIO\n")
+            tc.write("CD_TEXT {\n")
+            tc.write("  LANGUAGE 0 {\n")
+            tc.write("    TITLE \"{}\"\n".format(sngprops["song"]))
+            tc.write("    PERFORMER \"{}\"\n".format(sngprops["artist"]))
+            tc.write("  }\n")
+            tc.write("}\n")
+            tc.write("FILE \"{}\" 0\n\n".format(outsong))
+
+
+    # Call cdrdao to write the disk
+    com = ["cdrdao", "write", "--device", args.device, "--driver",
+           "generic-mmc:0x10", "-v", "2", "-n", "--eject", tocpath]
+    print(" ".join(com), flush=True)
+    sp.check_call(com, universal_newlines=True)
+
+    # Cleanup files
+    shutil.rmtree(wavdir)
+
+    return
+
+
+
+if __name__ == "__main__":
+    main()

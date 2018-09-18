@@ -155,7 +155,7 @@ def song_get_props(path, format):
                     break
 
     elif format == "ogg":
-
+        pass
     elif format == "mp3":
         pass
 
@@ -248,6 +248,7 @@ def album_props(albumdir):
         break
 
     asongs = list()
+    tracklist = list()
     for track, name, format, raw in songs:
         # If any metadata is missing, get it from the filename.
         songprops = song_get_props(os.path.join(albumdir, raw), format)
@@ -261,6 +262,7 @@ def album_props(albumdir):
         if songprops["artist"] is None:
             songprops["artist"] = artist
 
+        tracklist.append(songprops["track"])
         asongs.append( (raw, format, songprops) )
 
     # Does the song metadata for artist and album contradict the filesystem
@@ -289,7 +291,15 @@ def album_props(albumdir):
             print("WARNING:  overriding filesystem album artist '{}' with metadata value '{}'".format(artist, check_artist))
             artist = check_artist
 
-    return album, artist, asongs
+    # Sort the songs by track number
+    srtsongs = list()
+    tracklist = sorted(tracklist)
+    for trk in tracklist:
+        for r, f, props in asongs:
+            if props["track"] == trk:
+                srtsongs.append( (r, f, props) )
+
+    return album, artist, srtsongs
 
 
 if __name__ == "__main__":
